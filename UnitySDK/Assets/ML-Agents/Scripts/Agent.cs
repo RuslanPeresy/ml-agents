@@ -3,6 +3,8 @@ using System.Linq;
 using Google.Protobuf;
 using MLAgents.CommunicatorObjects;
 using UnityEngine;
+using UnityEngine.UI;
+using System.IO;
 
 
 namespace MLAgents
@@ -151,6 +153,11 @@ namespace MLAgents
         /// </summary>
         public List<RenderTexture> agentRenderTextures = new List<RenderTexture>();
 
+        /// <summary>
+        /// The list of the RawImages the agent uses for visual
+        /// observations.
+        /// </summary>
+        public List<RawImage> agentRawImages = new List<RawImage>();
 
         /// <summary>
         /// The maximum number of steps the agent takes before being done. 
@@ -319,7 +326,7 @@ namespace MLAgents
         /// becomes enabled or active.
         void OnEnable()
         {
-            var textureCount = agentParameters.agentCameras.Count+agentParameters.agentRenderTextures.Count;
+            var textureCount = agentParameters.agentCameras.Count+agentParameters.agentRenderTextures.Count + agentParameters.agentRawImages.Count;
             textureArray = new Texture2D[textureCount];
             for (int i = 0; i < textureCount; i++)
             {
@@ -599,12 +606,12 @@ namespace MLAgents
             info.stackedVectorObservation.AddRange(info.vectorObservation);
 
             info.visualObservations.Clear();
-            var visualObservationCount = agentParameters.agentCameras.Count+agentParameters.agentRenderTextures.Count;
+            var visualObservationCount = agentParameters.agentCameras.Count+agentParameters.agentRenderTextures.Count + agentParameters.agentRawImages.Count;
             if (param.cameraResolutions.Length > visualObservationCount)
             {
                 throw new UnityAgentsException(string.Format(
-                    "Not enough cameras/renderTextures for agent {0} : Brain {1} expecting at " +
-                    "least {2} cameras/renderTextures but only {3} were present.",
+                    "Not enough cameras/renderTextures/rawImages for agent {0} : Brain {1} expecting at " +
+                    "least {2} cameras/renderTextures/rawImages but only {3} were present.",
                     gameObject.name, brain.name,
                     brain.brainParameters.cameraResolutions.Length,
                     visualObservationCount));
@@ -629,6 +636,18 @@ namespace MLAgents
                     agentParameters.agentRenderTextures[i],
                     param.cameraResolutions[camCount+i].width,
                     param.cameraResolutions[camCount+i].height,
+                    ref textureArray[i]);
+                info.visualObservations.Add(textureArray[i]);
+            }
+
+            //Then add all rawImages
+            var camAndRenderTexCount = agentParameters.agentCameras.Count + agentParameters.agentRenderTextures.Count;
+            for (int i = 0; i < agentParameters.agentRawImages.Count; i++)
+            {
+                ObservationToTexture(
+                    agentParameters.agentRawImages[i],
+                    param.cameraResolutions[camAndRenderTexCount+i].width,
+                    param.cameraResolutions[camAndRenderTexCount+i].height,
                     ref textureArray[i]);
                 info.visualObservations.Add(textureArray[i]);
             }
@@ -1134,6 +1153,42 @@ namespace MLAgents
             texture2D.ReadPixels(new Rect(0, 0, texture2D.width, texture2D.height), 0, 0);
             texture2D.Apply();
             RenderTexture.active = prevActiveRT;
+        }
+
+        public static void ObservationToTexture(RawImage obsImage, int width, int height, ref Texture2D texture2D)
+        {
+            WebCamTexture wct = obsImage.GetComponent<WebCamRenderer>().webcamTexture;
+            Color32[] webcamData = wct.GetPixels32();
+
+            if (width != texture2D.width || height != texture2D.height)
+            {
+                texture2D.Resize(width, height);
+            }
+
+            if(width != wct.width || height != wct.height)
+            {
+                throw new UnityAgentsException(string.Format(
+                    "WebCamTexture applied to RawImage {0} : width/height is {1}/{2} brain is expecting {3}/{4}.",
+                    obsImage.name, wct.width, wct.height, width, height));
+            }
+
+            texture2D.SetPixels32(webcamData);
+            texture2D.Apply();
+
+            // This code is for testing
+
+//            const string _savePath = "C:/WebcamSnaps/";
+//            int _counter = 0;
+//            byte[] _data;
+
+//            if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
+
+//            for (int i = 0; i < 10; i++)
+//            {
+//                _data = texture2D.EncodeToPNG();
+//                File.WriteAllBytes(_savePath + _counter.ToString("D6") + ".png", _data);
+//                _counter++;
+//            }
         }
     }
 }
