@@ -1171,44 +1171,32 @@ namespace MLAgents
                     obsImage.name, wct.width, wct.height, width, height));
             }
 
-            obsImage.rectTransform.rect.Set(0, 0, texture2D.width, texture2D.height);
-            Rect sourceRec = obsImage.rectTransform.rect;
             var depth = 24;
             var format = RenderTextureFormat.Default;
             var readWrite = RenderTextureReadWrite.Default;
+            Texture tex = obsImage.GetComponent<RawImage>().texture;
 
             var tempRT =
                 RenderTexture.GetTemporary(width, height, depth, format, readWrite);
-            var cropperTexture = new Texture2D(width, height);
-
-            cropperTexture.ReadPixels(sourceRec, 0, 0, false);
-            cropperTexture.Apply();
-
-            var prevActiveRT = RenderTexture.active;
-
-            Graphics.Blit(cropperTexture, tempRT);
+            Graphics.Blit(tex, tempRT);
             RenderTexture.active = tempRT;
-
-
             texture2D.ReadPixels(new Rect(0, 0, texture2D.width, texture2D.height), 0, 0, false);
             texture2D.Apply();
-            RenderTexture.active = prevActiveRT;
-            RenderTexture.ReleaseTemporary(tempRT);
 
             // This code is for testing
 
-            const string _savePath = "C:/WebcamSnaps/";
-            int _counter = 0;
-            byte[] _data;
+//            const string _savePath = "C:/WebcamSnaps/";
+//            int _counter = 0;
+//            byte[] _data;
 
-            if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
+//            if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
 
-            for (int i = 0; i < 10; i++)
-            {
-                _data = texture2D.EncodeToPNG();
-                File.WriteAllBytes(_savePath + _counter.ToString("D6") + ".png", _data);
-                _counter++;
-            }
+//            for (int i = 0; i < 10; i++)
+//            {
+//                _data = texture2D.EncodeToPNG();
+//                File.WriteAllBytes(_savePath + _counter.ToString("D6") + ".png", _data);
+//                _counter++;
+//            }
         }
     }
 }
